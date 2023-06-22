@@ -1,0 +1,18 @@
+[package]
+name = "config-reader"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+config-reader-macro = { path = "../config-reader-macro" }
+reqwest = { version = "*", features = ["blocking"], optional = true }
+
+[dev-dependencies]
+reqwest = { version = "*", features = ["blocking"] }
+
+
+[features]
+default = ["labelary"]
+labelary = ["dep:reqwest"]
