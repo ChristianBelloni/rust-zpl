@@ -15,4 +15,4 @@ Rust Zpl Rendering Engine
  - [ ] Support for bitmap graphics 
  - [ ] Support for on-site printer internal memory management
  - [ ] Support for custom fonts
- - [ ] Support for generic ImageBuffer (Currently only supports Rgb<u8>)
+ - [ ] Support for generic ImageBuffer (Currently only supports Rgb\<u8\>)
