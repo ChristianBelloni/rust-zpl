@@ -3,29 +3,16 @@ mod command;
 mod drawable;
 mod error;
 mod modifier;
+mod params_ext;
 mod state_machine;
+mod zpl_parser;
 
 use command::Command;
 pub use error::ParseError;
 use modifier::Modifier;
-use std::{assert_eq, num::ParseIntError, println};
-
-pub use state_machine::CurrentState;
-
-pub fn render_to_bytes(format: &str) -> Result<(), ParseError> {
-    let mut state = CurrentState::new(203, 4, 6);
-    state.process_format(format)?;
-
-    let binding = state.to_zpl_code();
-    let reparsed = binding.replace([' ', '\n'], "");
-    println!("{reparsed}");
-    assert_eq!(format.replace([' ', '\n'], ""), reparsed);
-    state.render();
-    state.to_png("./file.png");
-    state.to_jpg("./file2.jpeg");
-
-    Ok(())
-}
+pub use params_ext::ParamsExt;
+pub(crate) use state_machine::CurrentState;
+pub use zpl_parser::ZPLParser;
 
 #[derive(Debug)]
 pub enum ZPLEntry<'a> {
@@ -63,11 +50,10 @@ impl<'a> FromZPL<'a, ZPLEntry<'a>> for &'a str {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+
     #[test]
     pub fn test_format() {
-        _ = render_to_bytes(
-            "^XA
+        _ = "^XA
 ^FX Top section with logo, name and address.
 ^CF0,60
 ^FO50,50^GB100,100,100^FS
@@ -105,14 +91,13 @@ mod tests {
 ^FO100,1060^FDREF2 BL4H8^FS
 ^CF0,190
 ^FO470,955^FDCA^FS
-        ^XZ",
-        );
+        ^XZ";
     }
 }
 
-pub trait ZPLExt<'a, T>: IntoZPL<'a, T> + FromZPL<'a, T> {}
+pub trait EntryExt<'a, T>: IntoZPL<'a, T> + FromZPL<'a, T> {}
 
-impl<'a, T> ZPLExt<'a, T> for &'a str
+impl<'a, T> EntryExt<'a, T> for &'a str
 where
     Self: IntoZPL<'a, T>,
     Self: FromZPL<'a, T>,
@@ -127,85 +112,14 @@ pub trait FromZPL<'a, T> {
     fn from_zpl(value: &'a T) -> Self;
 }
 
-pub trait ParamsExt<'a> {
-    type Error: Into<ParseError>;
-    fn get_param(s: Option<&'a str>, param_name: &str) -> Result<Self, ParseError>
-    where
-        Self: Sized;
-}
-
-impl<'a> ParamsExt<'a> for u32 {
-    type Error = ParseIntError;
-
-    fn get_param(s: Option<&'a str>, param_name: &str) -> Result<Self, ParseError>
-    where
-        Self: Sized,
-    {
-        Ok(s.ok_or(ParseError::MissingParameter(param_name.into()))?
-            .trim_matches(' ')
-            .parse()?)
-    }
-}
-
-impl<'a> ParamsExt<'a> for u8 {
-    type Error = ParseIntError;
-
-    fn get_param(s: Option<&'a str>, param_name: &str) -> Result<Self, ParseError>
-    where
-        Self: Sized,
-    {
-        Ok(s.ok_or(ParseError::MissingParameter(param_name.into()))?
-            .trim_matches(' ')
-            .parse()?)
-    }
-}
-
 #[derive(Debug)]
 pub enum LineColor {
     Black,
     White,
 }
 
-impl<'a> ParamsExt<'a> for LineColor {
-    type Error = ParseError;
-
-    fn get_param(s: Option<&'a str>, param_name: &str) -> Result<Self, ParseError>
-    where
-        Self: Sized,
-    {
-        let val = s
-            .ok_or(ParseError::MissingParameter(param_name.into()))?
-            .trim_matches(' ');
-        let val = match val {
-            "B" => Self::Black,
-            "W" => Self::White,
-            _ => Err(ParseError::UnsupportedCommand)?,
-        };
-        Ok(val)
-    }
-}
-
 #[derive(Debug)]
 pub enum ZPLBool {
     Yes,
     No,
-}
-
-impl<'a> ParamsExt<'a> for ZPLBool {
-    type Error = ParseError;
-
-    fn get_param(s: Option<&'a str>, param_name: &str) -> Result<Self, ParseError>
-    where
-        Self: Sized,
-    {
-        let val = s
-            .ok_or(ParseError::MissingParameter(param_name.into()))?
-            .trim_matches(' ');
-        let val = match val {
-            "Y" => Self::Yes,
-            "N" => Self::No,
-            _ => Err(ParseError::UnsupportedCommand)?,
-        };
-        Ok(val)
-    }
 }
